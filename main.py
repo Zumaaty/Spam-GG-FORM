@@ -1,16 +1,15 @@
 import json
 import random
 import time
-import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
-# Lấy link và số lượt từ GitHub Actions truyền vào (nếu chạy local thì có giá trị dự phòng)
-VIEWFORM_URL = os.environ.get("FORM_URL", "ĐIỀN_LINK_DỰ_PHÒNG_NẾU_CÓ")
-TOTAL_RUNS = int(os.environ.get("TOTAL_RUNS", 1))
+# --- CẤU HÌNH TRỰC TIẾP TẠI ĐÂY ĐỂ CHẠY TRÊN GITHUB ---
+VIEWFORM_URL = "DÁN_LINK_GOOGLE_FORM_CỦA_BẠN_VÀO_ĐÂY"
+TOTAL_RUNS = 50  # Nhập số lượng lượt bạn muốn chạy mỗi lần bấm (Ví dụ: 50 hoặc 100)
 FIXED_TEXT_ANSWER = "Không có ý kiến"
 
 base_url = VIEWFORM_URL.split("/formResponse")[0].split("/viewform")[0]
