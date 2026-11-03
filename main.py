@@ -114,4 +114,9 @@ def run_automation():
                 fail_count += 1
 
     finally:
-        driver.quit
+        driver.quit()
+
+    print(f"\n=== KẾT QUẢ: Thành công: {success_count} | Thất bại: {fail_count} ===")
+
+if __name__ == "__main__":
+    run_automation()
