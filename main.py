@@ -1,15 +1,16 @@
 import json
 import random
 import time
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
-# --- CẤU HÌNH TRỰC TIẾP ---
-RAW_URL = "DÁN_LINK_GOOGLE_FORM_CỦA_BẠN_VÀO_ĐÂY"
-TOTAL_RUNS = 3  # Chạy thử 3 lượt để test log
+# --- THAY LINK GOOGLE FORM THẬT CỦA BẠN VÀO DƯỚI ĐÂY ---
+RAW_URL = os.environ.get("FORM_URL", "https://docs.google.com/forms/d/e/1FAIpQLSeEpXAbnsd6rEkvYsQe0in5l9iQZrLylSMYOLe6z2E5IVUwoQ/viewform")
+TOTAL_RUNS = int(os.environ.get("TOTAL_RUNS", 20))  # Số lượng lượt chạy mong muốn
 FIXED_TEXT_ANSWER = "Không có ý kiến"
 
 if "/viewform" in RAW_URL:
@@ -37,18 +38,14 @@ def run_automation():
         for run in range(TOTAL_RUNS):
             print(f"\n--- Đang chạy lượt {run + 1}/{TOTAL_RUNS} ---")
             driver.get(viewform_url)
-            time.sleep(2)
+            time.sleep(1.5)
 
-            # Vòng lặp duyệt các trang
             for page in range(10):
-                time.sleep(1)
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(0.5)
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(0.3)
 
-                # Tìm và điền câu hỏi
                 question_blocks = driver.find_elements(By.XPATH, "//div[@role='listitem']")
-                print(f"Trang {page + 1}: Tìm thấy {len(question_blocks)} câu hỏi.")
-                
                 for block in question_blocks:
                     try:
                         radio_options = block.find_elements(By.XPATH, ".//div[@role='radio']")
@@ -77,20 +74,17 @@ def run_automation():
                         if text_inputs:
                             text_inputs[0].clear()
                             text_inputs[0].send_keys(FIXED_TEXT_ANSWER)
-                    except Exception as e:
-                        pass
+                    except:
+                        continue
 
-                # Kiểm tra nút Tiếp theo hoặc Gửi
                 next_buttons = driver.find_elements(By.XPATH, "//div[@role='button']//span[contains(translate(text(), 'TẤP', 'tap'), 'tiếp') or contains(translate(text(), 'NEXT', 'next'), 'next')]")
                 valid_next = [btn for btn in next_buttons if btn.is_displayed()]
 
                 if valid_next:
-                    print("-> Bấm nút Tiếp theo.")
                     driver.execute_script("arguments[0].click();", valid_next[0])
-                    time.sleep(1.5)
+                    time.sleep(0.8)
                 else:
-                    print("-> Đã đến trang cuối, tìm nút Gửi...")
-                    time.sleep(1)
+                    time.sleep(0.5)
                     all_buttons = driver.find_elements(By.XPATH, "//div[@role='button']")
                     submit_clicked = False
                     if all_buttons:
@@ -100,26 +94,12 @@ def run_automation():
                                 if "xóa" not in btn_text and btn.is_displayed():
                                     driver.execute_script("arguments[0].click();", btn)
                                     submit_clicked = True
-                                    print("-> ĐÃ BẤM NÚT GỬI THÀNH CÔNG!")
                                     break
                             except:
                                 continue
 
-                    if not submit_clicked:
-                        print("-> LỖI: Không tìm thấy nút Gửi hợp lệ trên trang cuối!")
-                        fail_count += 1
-                    else:
+                    if submit_clicked:
+                        print("-> ĐÃ BẤM NÚT GỬI THÀNH CÔNG!")
                         success_count += 1
-
-                    time.sleep(2)
-                    break
-
-    except Exception as ex:
-        print(f"-> Lỗi nghiêm trọng: {ex}")
-    finally:
-        driver.quit()
-
-    print(f"\n=== KẾT QUẢ: Thành công: {success_count} | Thất bại: {fail_count} ===")
-
-if __name__ == "__main__":
-    run_automation()
+                    else:
+                        print("-> LỖI: Không tìm thấy
