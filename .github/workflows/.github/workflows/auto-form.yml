@@ -1,11 +1,21 @@
 name: Run Auto Google Form
 
 on:
-  workflow_dispatch: # Cho phép bạn bấm nút chạy thủ công bất cứ lúc nào trên web GitHub
+  workflow_dispatch:
+    inputs:
+      form_url:
+        description: 'Nhập URL Google Form của bạn'
+        required: true
+        type: string
+      total_runs:
+        description: 'Số lượng lượt chạy mong muốn'
+        required: true
+        default: '10'
+        type: string
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Chạy trên máy chủ ảo Linux miễn phí của GitHub
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
@@ -22,4 +32,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run automation script
+      env:
+        FORM_URL: ${{ github.event.inputs.form_url }}
+        TOTAL_RUNS: ${{ github.event.inputs.total_runs }}
       run: python main.py
