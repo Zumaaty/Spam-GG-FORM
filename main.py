@@ -8,7 +8,7 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
-# --- THAY LINK GOOGLE FORM THẬT CỦA BẠN VÀO DƯỚI ĐÂY ---
+# --- LẤY CẤU HÌNH TỪ GITHUB ACTIONS HOẶC MẶC ĐỊNH ---
 RAW_URL = os.environ.get("FORM_URL", "https://docs.google.com/forms/d/e/1FAIpQLSeEpXAbnsd6rEkvYsQe0in5l9iQZrLylSMYOLe6z2E5IVUwoQ/viewform")
 TOTAL_RUNS = int(os.environ.get("TOTAL_RUNS", 20))  # Số lượng lượt chạy mong muốn
 FIXED_TEXT_ANSWER = "Không có ý kiến"
@@ -36,70 +36,82 @@ def run_automation():
 
     try:
         for run in range(TOTAL_RUNS):
-            print(f"\n--- Đang chạy lượt {run + 1}/{TOTAL_RUNS} ---")
-            driver.get(viewform_url)
-            time.sleep(1.5)
+            print(f"\n--- Đang chạy lượt {run + 1}/{TOTAL_RUNS} ---", end=" ")
+            try:
+                driver.get(viewform_url)
+                time.sleep(1)
 
-            for page in range(10):
-                time.sleep(0.5)
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(0.3)
+                for page in range(10):
+                    time.sleep(0.3)
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    time.sleep(0.2)
 
-                question_blocks = driver.find_elements(By.XPATH, "//div[@role='listitem']")
-                for block in question_blocks:
-                    try:
-                        radio_options = block.find_elements(By.XPATH, ".//div[@role='radio']")
-                        if radio_options:
-                            chosen = random.choice(radio_options)
-                            driver.execute_script("arguments[0].scrollIntoView(true);", chosen)
-                            chosen.click()
-                            continue
-
-                        grid_rows = block.find_elements(By.XPATH, ".//div[@role='row']")
-                        if grid_rows:
-                            for row in grid_rows:
-                                r_radios = row.find_elements(By.XPATH, ".//div[@role='radio']")
-                                if r_radios:
-                                    random.choice(r_radios).click()
-                            continue
-
-                        checkbox_options = block.find_elements(By.XPATH, ".//div[@role='checkbox']")
-                        if checkbox_options:
-                            sampled = random.sample(checkbox_options, k=min(len(checkbox_options), random.randint(1, 2)))
-                            for cb in sampled:
-                                cb.click()
-                            continue
-
-                        text_inputs = block.find_elements(By.XPATH, ".//input[@type='text'] | .//textarea")
-                        if text_inputs:
-                            text_inputs[0].clear()
-                            text_inputs[0].send_keys(FIXED_TEXT_ANSWER)
-                    except:
-                        continue
-
-                next_buttons = driver.find_elements(By.XPATH, "//div[@role='button']//span[contains(translate(text(), 'TẤP', 'tap'), 'tiếp') or contains(translate(text(), 'NEXT', 'next'), 'next')]")
-                valid_next = [btn for btn in next_buttons if btn.is_displayed()]
-
-                if valid_next:
-                    driver.execute_script("arguments[0].click();", valid_next[0])
-                    time.sleep(0.8)
-                else:
-                    time.sleep(0.5)
-                    all_buttons = driver.find_elements(By.XPATH, "//div[@role='button']")
-                    submit_clicked = False
-                    if all_buttons:
-                        for btn in reversed(all_buttons):
-                            try:
-                                btn_text = btn.text.strip().lower()
-                                if "xóa" not in btn_text and btn.is_displayed():
-                                    driver.execute_script("arguments[0].click();", btn)
-                                    submit_clicked = True
-                                    break
-                            except:
+                    question_blocks = driver.find_elements(By.XPATH, "//div[@role='listitem']")
+                    for block in question_blocks:
+                        try:
+                            radio_options = block.find_elements(By.XPATH, ".//div[@role='radio']")
+                            if radio_options:
+                                chosen = random.choice(radio_options)
+                                driver.execute_script("arguments[0].scrollIntoView(true);", chosen)
+                                chosen.click()
                                 continue
 
-                    if submit_clicked:
-                        print("-> ĐÃ BẤM NÚT GỬI THÀNH CÔNG!")
-                        success_count += 1
+                            grid_rows = block.find_elements(By.XPATH, ".//div[@role='row']")
+                            if grid_rows:
+                                for row in grid_rows:
+                                    r_radios = row.find_elements(By.XPATH, ".//div[@role='radio']")
+                                    if r_radios:
+                                        random.choice(r_radios).click()
+                                continue
+
+                            checkbox_options = block.find_elements(By.XPATH, ".//div[@role='checkbox']")
+                            if checkbox_options:
+                                sampled = random.sample(checkbox_options, k=min(len(checkbox_options), random.randint(1, 2)))
+                                for cb in sampled:
+                                    cb.click()
+                                continue
+
+                            text_inputs = block.find_elements(By.XPATH, ".//input[@type='text'] | .//textarea")
+                            if text_inputs:
+                                text_inputs[0].clear()
+                                text_inputs[0].send_keys(FIXED_TEXT_ANSWER)
+                        except:
+                            continue
+
+                    next_buttons = driver.find_elements(By.XPATH, "//div[@role='button']//span[contains(translate(text(), 'TẤP', 'tap'), 'tiếp') or contains(translate(text(), 'NEXT', 'next'), 'next')]")
+                    valid_next = [btn for btn in next_buttons if btn.is_displayed()]
+
+                    if valid_next:
+                        driver.execute_script("arguments[0].click();", valid_next[0])
+                        time.sleep(0.5)
                     else:
-                        print("-> LỖI: Không tìm thấy
+                        time.sleep(0.3)
+                        all_buttons = driver.find_elements(By.XPATH, "//div[@role='button']")
+                        submit_clicked = False
+                        if all_buttons:
+                            for btn in reversed(all_buttons):
+                                try:
+                                    btn_text = btn.text.strip().lower()
+                                    if "xóa" not in btn_text and btn.is_displayed():
+                                        driver.execute_script("arguments[0].click();", btn)
+                                        submit_clicked = True
+                                        break
+                                except:
+                                    continue
+
+                        if submit_clicked:
+                            print("Gửi thành công!")
+                            success_count += 1
+                        else:
+                            print("Không tìm thấy nút Gửi!")
+                            fail_count += 1
+
+                        time.sleep(0.5)
+                        break
+
+            except Exception as e:
+                print(f"Lỗi lượt này: {e}")
+                fail_count += 1
+
+    finally:
+        driver.quit
