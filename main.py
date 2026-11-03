@@ -7,13 +7,18 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
-# --- CẤU HÌNH TRỰC TIẾP TẠI ĐÂY ĐỂ CHẠY TRÊN GITHUB ---
-VIEWFORM_URL = "DÁN_LINK_GOOGLE_FORM_CỦA_BẠN_VÀO_ĐÂY"
-TOTAL_RUNS = 50  # Nhập số lượng lượt bạn muốn chạy mỗi lần bấm (Ví dụ: 50 hoặc 100)
+# --- CẤU HÌNH TRỰC TIẾP ---
+RAW_URL = "DÁN_LINK_GOOGLE_FORM_CỦA_MÀN_HÌNH_BẠN_VÀO_ĐÂY"
+TOTAL_RUNS = 20  # Số lượng lượt chạy mong muốn
 FIXED_TEXT_ANSWER = "Không có ý kiến"
 
-base_url = VIEWFORM_URL.split("/formResponse")[0].split("/viewform")[0]
-viewform_url = base_url + "/viewform"
+# Xử lý tự động chuẩn hóa URL để ép Google Form nhận diện điểm gửi phản hồi
+if "/viewform" in RAW_URL:
+    viewform_url = RAW_URL.split("/viewform")[0] + "/viewform"
+elif "/edit" in RAW_URL:
+    viewform_url = RAW_URL.split("/edit")[0] + "/viewform"
+else:
+    viewform_url = RAW_URL.strip("/") + "/viewform"
 
 def run_automation():
     success_count = 0
