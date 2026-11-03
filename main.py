@@ -6,13 +6,14 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # --- CẤU HÌNH TRỰC TIẾP ---
-RAW_URL = "DÁN_LINK_GOOGLE_FORM_CỦA_MÀN_HÌNH_BẠN_VÀO_ĐÂY"
-TOTAL_RUNS = 20  # Số lượng lượt chạy mong muốn
+RAW_URL = "DÁN_LINK_GOOGLE_FORM_CỦA_BẠN_VÀO_ĐÂY"
+TOTAL_RUNS = 10  # Chạy thử 10 lượt trước để kiểm tra log
 FIXED_TEXT_ANSWER = "Không có ý kiến"
 
-# Xử lý tự động chuẩn hóa URL để ép Google Form nhận diện điểm gửi phản hồi
 if "/viewform" in RAW_URL:
     viewform_url = RAW_URL.split("/viewform")[0] + "/viewform"
 elif "/edit" in RAW_URL:
@@ -24,9 +25,8 @@ def run_automation():
     success_count = 0
     fail_count = 0
 
-    print(f"Bắt đầu khởi tạo phiên làm việc tốc độ cao cho {TOTAL_RUNS} lượt...")
+    print(f"Bắt đầu chạy form: {viewform_url}")
 
-    # MỞ CHROME 1 LẦN DUY NHẤT ĐỂ TĂNG TỐC TỐI ĐA
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
@@ -34,21 +34,24 @@ def run_automation():
     options.add_argument("--disable-gpu")
     
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    wait = WebDriverWait(driver, 10)
 
     try:
         for run in range(TOTAL_RUNS):
-            print(f"Đang gửi lượt thứ {run + 1}/{TOTAL_RUNS}...", end=" ")
+            print(f"\n--- Lượt {run + 1}/{TOTAL_RUNS} ---")
             try:
                 driver.get(viewform_url)
-                time.sleep(1) # Chờ form load nhanh
+                
+                # Chờ cho đến khi danh sách câu hỏi xuất hiện hẳn trên trang
+                wait.until(EC.presence_of_element_located((By.XPATH, "//div[@role='listitem']")))
+                time.sleep(1)
 
-                # Duyệt qua các trang của form
+                # Duyệt qua các trang (tối đa 10 trang)
                 for page in range(10):
-                    time.sleep(0.3)
                     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                    time.sleep(0.2)
+                    time.sleep(0.5)
 
-                    # Điền câu hỏi
+                    # Điền câu hỏi trên trang hiện tại
                     question_blocks = driver.find_elements(By.XPATH, "//div[@role='listitem']")
                     for block in question_blocks:
                         try:
@@ -81,15 +84,16 @@ def run_automation():
                         except:
                             continue
 
-                    # Xử lý nút Tiếp theo / Gửi
+                    # Kiểm tra nút "Tiếp theo" hoặc nút "Gửi"
                     next_buttons = driver.find_elements(By.XPATH, "//div[@role='button']//span[contains(translate(text(), 'TẤP', 'tap'), 'tiếp') or contains(translate(text(), 'NEXT', 'next'), 'next')]")
                     valid_next = [btn for btn in next_buttons if btn.is_displayed()]
 
                     if valid_next:
                         driver.execute_script("arguments[0].click();", valid_next[0])
-                        time.sleep(0.5)
+                        time.sleep(1)
                     else:
-                        time.sleep(0.3)
+                        # Đã đến trang cuối, tìm nút Gửi
+                        time.sleep(1)
                         all_buttons = driver.find_elements(By.XPATH, "//div[@role='button']")
                         submit_clicked = False
                         if all_buttons:
@@ -104,16 +108,16 @@ def run_automation():
                                     continue
 
                         if submit_clicked:
-                            print("Gửi thành công!")
+                            print("-> Đã bấm Gửi thành công!")
                             success_count += 1
                         else:
-                            print("Không tìm thấy nút Gửi!")
+                            print("-> Thất bại: Không tìm thấy nút Gửi trên trang cuối!")
                             fail_count += 1
-                        time.sleep(0.5)
+                        time.sleep(2)
                         break
 
             except Exception as e:
-                print(f"Lỗi lượt này: {e}")
+                print(f"-> Lỗi ngoại lệ ở lượt này: {e}")
                 fail_count += 1
 
     finally:
