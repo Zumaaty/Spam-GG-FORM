@@ -1,0 +1,161 @@
+import json
+import random
+import time
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+
+class ConsoleColor:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+while True:
+    print(ConsoleColor.HEADER + "=== TOOL AUTO GOOGLE FORM (HOÀN THIỆN TỐI ƯU) ===" + ConsoleColor.ENDC)
+    raw_url = input("Nhập URL Google Form: ").strip()
+    
+    base_url = raw_url.split("/formResponse")[0].split("/viewform")[0]
+    viewform_url = base_url + "/viewform"
+
+    try:
+        times = int(input(ConsoleColor.HEADER + "Bạn muốn tự động chạy bao nhiêu lần?: " + ConsoleColor.ENDC))
+    except:
+        times = 1
+
+    print(ConsoleColor.WARNING + "\n[Cấu hình câu tự luận]" + ConsoleColor.ENDC)
+    fixed_text_answer = input("Nhập câu trả lời cố định cho phần tự luận (hoặc Enter để để trống): ").strip()
+    if not fixed_text_answer:
+        fixed_text_answer = "Không có ý kiến"
+
+    success_count = 0
+    fail_count = 0
+
+    print(ConsoleColor.OKCYAN + f"\nBắt đầu tiến trình tự động hoàn toàn {times} lượt..." + ConsoleColor.ENDC)
+
+    for run in range(times):
+        print(f"\n--- Đang chạy lượt thứ {run + 1}/{times} ---")
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        
+        try:
+            driver.get(viewform_url)
+            time.sleep(2)
+
+            # Vòng lặp duyệt qua các trang của form
+            for page in range(10):
+                time.sleep(1)
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight/2);")
+                time.sleep(0.5)
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(1)
+
+                # Tự động điền đáp án trên trang hiện tại
+                question_blocks = driver.find_elements(By.XPATH, "//div[@role='listitem']")
+                for block in question_blocks:
+                    try:
+                        # Trắc nghiệm (Radio)
+                        radio_options = block.find_elements(By.XPATH, ".//div[@role='radio']")
+                        if radio_options:
+                            chosen = random.choice(radio_options)
+                            driver.execute_script("arguments[0].scrollIntoView(true);", chosen)
+                            time.sleep(0.03)
+                            chosen.click()
+                            continue
+
+                        # Dạng Lưới (Grid)
+                        grid_rows = block.find_elements(By.XPATH, ".//div[@role='row']")
+                        if grid_rows:
+                            for row in grid_rows:
+                                r_radios = row.find_elements(By.XPATH, ".//div[@role='radio']")
+                                if r_radios:
+                                    chosen_r = random.choice(r_radios)
+                                    driver.execute_script("arguments[0].scrollIntoView(true);", chosen_r)
+                                    time.sleep(0.02)
+                                    chosen_r.click()
+                            continue
+
+                        # Checkbox (Chọn nhiều)
+                        checkbox_options = block.find_elements(By.XPATH, ".//div[@role='checkbox']")
+                        if checkbox_options:
+                            sampled = random.sample(checkbox_options, k=min(len(checkbox_options), random.randint(1, 2)))
+                            for cb in sampled:
+                                driver.execute_script("arguments[0].scrollIntoView(true);", cb)
+                                time.sleep(0.02)
+                                cb.click()
+                            continue
+
+                        # Tự luận
+                        text_inputs = block.find_elements(By.XPATH, ".//input[@type='text'] | .//textarea")
+                        if text_inputs:
+                            text_inputs[0].clear()
+                            text_inputs[0].send_keys(fixed_text_answer)
+                    except:
+                        continue
+
+                # Kiểm tra xem có nút "Tiếp theo" hay không
+                next_buttons = driver.find_elements(By.XPATH, "//div[@role='button']//span[contains(translate(text(), 'TẤP', 'tap'), 'tiếp') or contains(translate(text(), 'NEXT', 'next'), 'next')]")
+                valid_next = [btn for btn in next_buttons if btn.is_displayed()]
+
+                if valid_next:
+                    # Nếu vẫn còn nút Tiếp theo -> Bấm để sang trang tiếp theo
+                    driver.execute_script("arguments[0].scrollIntoView(true);", valid_next[0])
+                    time.sleep(0.5)
+                    driver.execute_script("arguments[0].click();", valid_next[0])
+                    time.sleep(1.5)
+                else:
+                    # KHÔNG CÒN NÚT TIẾP THEO -> ĐÂY LÀ TRANG CUỐI CÙNG!
+                    time.sleep(1)
+                    print(ConsoleColor.OKBLUE + f"Lượt {run + 1}: Đã đến trang cuối, tiến hành bấm nút Gửi..." + ConsoleColor.ENDC)
+                    
+                    # Lấy toàn bộ các nút bấm (role='button') xuất hiện trên trang cuối
+                    all_buttons = driver.find_elements(By.XPATH, "//div[@role='button']")
+                    submit_clicked = False
+
+                    if all_buttons:
+                        # Nút Gửi luôn là nút hành động chính nằm ở cuối danh sách các nút bấm (loại trừ nút xóa)
+                        for btn in reversed(all_buttons):
+                            try:
+                                btn_text = btn.text.strip().lower()
+                                if "xóa" not in btn_text and btn.is_displayed():
+                                    driver.execute_script("arguments[0].scrollIntoView(true);", btn)
+                                    time.sleep(0.8)
+                                    driver.execute_script("arguments[0].click();", btn)
+                                    submit_clicked = True
+                                    print(ConsoleColor.OKGREEN + f"Lượt {run + 1}: Đã bấm nút GỬI thành công!" + ConsoleColor.ENDC)
+                                    break
+                            except:
+                                continue
+
+                    if not submit_clicked:
+                        print(ConsoleColor.FAIL + f"Lượt {run + 1}: Không tìm thấy nút Gửi!" + ConsoleColor.ENDC)
+
+                    # Chờ 4 giây để Google Form ghi nhận phản hồi
+                    time.sleep(4)
+                    success_count += 1
+                    break
+
+            # Đóng Chrome sau khi hoàn tất lượt
+            driver.quit()
+            print(ConsoleColor.OKBLUE + f"Đã đóng Chrome lượt {run + 1}. Chuyển sang lượt tiếp theo..." + ConsoleColor.ENDC)
+            time.sleep(1)
+
+        except Exception as ex:
+            print(ConsoleColor.FAIL + f"Lỗi ở lượt {run + 1}: {ex}" + ConsoleColor.ENDC)
+            fail_count += 1
+            try:
+                driver.quit()
+            except:
+                pass
+
+    print(ConsoleColor.OKGREEN + f"\n=== KẾT QUẢ HOÀN TẤT ===" + ConsoleColor.ENDC)
+    print(f"Tổng số lượt chạy: {times}")
+    print(f"Thành công: {success_count}")
+    print(f"Thất bại: {fail_count}")
+
+    cont = input("\nBạn có muốn chạy tiếp với form khác không? (y/n): ").strip().lower()
+    if cont != 'y':
+        break
