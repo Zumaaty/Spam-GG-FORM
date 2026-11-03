@@ -1,25 +1,30 @@
 import json
 import random
 import time
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
-# Đọc URL và số lần chạy trực tiếp qua biến môi trường hoặc cấu hình sẵn để GitHub tự động hóa
-VIEWFORM_URL = "ĐIỀN_URL_FORM_CỦA_BẠN_VÀO_ĐÂY"
-TOTAL_RUNS = 10  # Số lượng lượt bạn muốn chạy mỗi lần trigger
+# Lấy link và số lượt từ GitHub Actions truyền vào (nếu chạy local thì có giá trị dự phòng)
+VIEWFORM_URL = os.environ.get("FORM_URL", "ĐIỀN_LINK_DỰ_PHÒNG_NẾU_CÓ")
+TOTAL_RUNS = int(os.environ.get("TOTAL_RUNS", 1))
 FIXED_TEXT_ANSWER = "Không có ý kiến"
+
+base_url = VIEWFORM_URL.split("/formResponse")[0].split("/viewform")[0]
+viewform_url = base_url + "/viewform"
 
 def run_automation():
     success_count = 0
     fail_count = 0
 
+    print(f"Bắt đầu chạy tự động {TOTAL_RUNS} lượt cho form: {viewform_url}")
+
     for run in range(TOTAL_RUNS):
         print(f"\n--- Đang chạy lượt thứ {run + 1}/{TOTAL_RUNS} ---")
         
-        # Cấu hình Chrome chạy ngầm (Headless) chuẩn Linux cho GitHub Actions
         options = Options()
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
@@ -29,20 +34,17 @@ def run_automation():
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
         try:
-            driver.get(VIEWFORM_URL)
+            driver.get(viewform_url)
             time.sleep(2)
 
-            # Vòng lặp duyệt qua các trang
             for page in range(10):
                 time.sleep(1)
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(0.5)
 
-                # Điền câu hỏi
                 question_blocks = driver.find_elements(By.XPATH, "//div[@role='listitem']")
                 for block in question_blocks:
                     try:
-                        # Trắc nghiệm
                         radio_options = block.find_elements(By.XPATH, ".//div[@role='radio']")
                         if radio_options:
                             chosen = random.choice(radio_options)
@@ -50,7 +52,6 @@ def run_automation():
                             chosen.click()
                             continue
 
-                        # Dạng Lưới
                         grid_rows = block.find_elements(By.XPATH, ".//div[@role='row']")
                         if grid_rows:
                             for row in grid_rows:
@@ -59,7 +60,6 @@ def run_automation():
                                     random.choice(r_radios).click()
                             continue
 
-                        # Checkbox
                         checkbox_options = block.find_elements(By.XPATH, ".//div[@role='checkbox']")
                         if checkbox_options:
                             sampled = random.sample(checkbox_options, k=min(len(checkbox_options), random.randint(1, 2)))
@@ -67,7 +67,6 @@ def run_automation():
                                 cb.click()
                             continue
 
-                        # Tự luận
                         text_inputs = block.find_elements(By.XPATH, ".//input[@type='text'] | .//textarea")
                         if text_inputs:
                             text_inputs[0].clear()
@@ -75,7 +74,6 @@ def run_automation():
                     except:
                         continue
 
-                # Xử lý nút Tiếp theo / Gửi
                 next_buttons = driver.find_elements(By.XPATH, "//div[@role='button']//span[contains(translate(text(), 'TẤP', 'tap'), 'tiếp') or contains(translate(text(), 'NEXT', 'next'), 'next')]")
                 valid_next = [btn for btn in next_buttons if btn.is_displayed()]
 
